@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Security Lab by Mason Clarke — hashing and the avalanche effect, AES-GCM encryption, password strength, cipher cracking and JWT inspection, all client-side." />
+    <meta name="theme-color" content="#020617" />
+    <meta name="referrer" content="no-referrer" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2300adff'/%3E%3Crect x='9' y='14' width='14' height='11' rx='2' fill='%23020617'/%3E%3Cpath d='M12 14v-3a4 4 0 018 0v3' fill='none' stroke='%23020617' stroke-width='2.5'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="styles/theme.css" />
+    <link rel="stylesheet" href="styles/app.css" />
+    <title>Security Lab · Mason Clarke</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="topbar__brand" href="https://masons-resume-website.netlify.app/"><span class="topbar__logo">MC</span> Mason Clarke</a>
+      <nav class="topbar__links">
+        <a href="https://masons-resume-website.netlify.app/#projects">Portfolio</a>
+        <a href="https://github.com/Masons-coding/security-lab">Source</a>
+      </nav>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <p class="eyebrow">cryptography &amp; security</p>
+        <h1>Security Lab</h1>
+        <p class="lead">
+          Hands-on tools for the ideas behind modern security. Everything runs locally with the browser's Web Crypto API, and
+          this page's Content-Security-Policy blocks <em>all</em> network requests, so nothing you type can leave your device.
+        </p>
+        <p class="badge-row"><span class="tag tag--good">🔒 connect-src 'none'</span> <span class="tag">Web Crypto API</span> <span class="tag">0 dependencies</span></p>
+      </section>
+
+      <div class="tabs" role="tablist" aria-label="Tools">
+        <button class="tab" role="tab" id="tab-hash" aria-controls="panel-hash" data-hash="hashing">Hashing</button>
+        <button class="tab" role="tab" id="tab-aes" aria-controls="panel-aes" data-hash="encryption">Encryption</button>
+        <button class="tab" role="tab" id="tab-pw" aria-controls="panel-pw" data-hash="passwords">Passwords</button>
+        <button class="tab" role="tab" id="tab-cipher" aria-controls="panel-cipher" data-hash="ciphers">Cipher cracking</button>
+        <button class="tab" role="tab" id="tab-jwt" aria-controls="panel-jwt" data-hash="jwt">JWT inspector</button>
+      </div>
+
+      <!-- ================= HASHING ================= -->
+      <section id="panel-hash" role="tabpanel" aria-labelledby="tab-hash">
+        <div class="grid grid--2">
+          <div class="panel">
+            <h2>Hash anything</h2>
+            <label class="field">Input
+              <textarea id="hash-input" rows="3">Hello, recruiters!</textarea>
+            </label>
+            <div class="hash-list" id="hash-list"></div>
+          </div>
+          <div class="panel">
+            <h2>The avalanche effect</h2>
+            <p class="muted small">Change one character and about half of the 256 output bits flip. That unpredictability is why hashes can't be reversed by nudging the input.</p>
+            <div class="two">
+              <label class="field">Input A <input type="text" id="av-a" value="Mason" /></label>
+              <label class="field">Input B <input type="text" id="av-b" value="mason" /></label>
+            </div>
+            <p class="av-summary" id="av-summary"></p>
+            <div class="bitgrid" id="bitgrid" aria-label="Bits that differ between the two SHA-256 digests"></div>
+            <p class="muted small"><span class="swatch swatch--flip"></span> bit differs · <span class="swatch swatch--same"></span> bit matches (SHA-256)</p>
+          </div>
+        </div>
+        <details class="learn panel">
+          <summary>Why it matters</summary>
+          <ul>
+            <li>Hashes are one-way fingerprints used for integrity checks, digital signatures, content addressing (Git!) and password storage.</li>
+            <li><strong>SHA-1 is broken</strong> for collision resistance (the 2017 SHAttered attack). Use SHA-256 or better.</li>
+            <li>Never store passwords with a fast hash like SHA-256 alone. Use a slow, salted KDF (bcrypt, scrypt, Argon2 or PBKDF2) so each guess costs attackers real time.</li>
+          </ul>
+        </details>
+      </section>
+
+      <!-- ================= ENCRYPTION ================= -->
+      <section id="panel-aes" role="tabpanel" aria-labelledby="tab-aes" hidden>
+        <div class="grid grid--2">
+          <div class="panel">
+            <h2>Encrypt</h2>
+            <label class="field">Secret message <textarea id="enc-text" rows="4">The launch code is 0000 (please don't tell anyone).</textarea></label>
+            <label class="field">Password <input type="password" id="enc-pw" value="correct horse battery staple" autocomplete="new-password" /></label>
+            <button class="btn btn--primary" id="enc-btn">🔒 Encrypt</button>
+            <label class="field out-field">Ciphertext bundle
+              <textarea id="enc-out" rows="4" readonly placeholder="Encrypted output appears here"></textarea>
+            </label>
+            <p class="muted small" id="enc-meta"></p>
+          </div>
+          <div class="panel">
+            <h2>Decrypt</h2>
+            <label class="field">Ciphertext bundle <textarea id="dec-in" rows="4" placeholder="Paste a v1.… bundle"></textarea></label>
+            <label class="field">Password <input type="password" id="dec-pw" autocomplete="off" /></label>
+            <div class="btn-row">
+              <button class="btn btn--primary" id="dec-btn">🔓 Decrypt</button>
+              <button class="btn btn--small btn--orange" id="tamper-btn" title="Flip one bit of the ciphertext">Tamper 1 bit</button>
+            </div>
+            <pre class="output" id="dec-out">Try the right password, a wrong one, or tamper with a bit and watch GCM refuse.</pre>
+          </div>
+        </div>
+        <details class="learn panel" open>
+          <summary>What's happening</summary>
+          <ul>
+            <li><strong>Key derivation:</strong> PBKDF2-HMAC-SHA256 with a random 16-byte salt and 600,000 iterations (OWASP 2023) turns a password into a 256-bit key. The salt defeats precomputed rainbow tables.</li>
+            <li><strong>AES-256-GCM:</strong> authenticated encryption. A random 12-byte IV means the same message encrypts differently every time, and a 128-bit authentication tag detects <em>any</em> modification before a single byte is decrypted.</li>
+            <li><strong>Bundle format:</strong> <code>v1.salt.iv.ciphertext</code> in base64url. Everything needed to decrypt except the password.</li>
+          </ul>
+        </details>
+      </section>
+
+      <!-- ================= PASSWORDS ================= -->
+      <section id="panel-pw" role="tabpanel" aria-labelledby="tab-pw" hidden>
+        <div class="grid grid--2">
+          <div class="panel">
+            <h2>How strong is it?</h2>
+            <div class="pw-input">
+              <input type="password" id="pw" placeholder="Type a password to test" autocomplete="off" aria-label="Password to analyse" />
+              <button class="btn btn--small" id="pw-toggle" type="button">Show</button>
+            </div>
+            <div class="meter" aria-hidden="true"><div class="meter__fill" id="pw-meter"></div></div>
+            <p class="pw-label" id="pw-label">Start typing…</p>
+            <div class="stats" id="pw-stats"></div>
+            <ul class="findings" id="pw-findings"></ul>
+            <p class="muted small">Try: <button class="linkish" data-pw="password">password</button>, <button class="linkish" data-pw="Summer2024!">Summer2024!</button>, <button class="linkish" data-pw="P@ssw0rd">P@ssw0rd</button>, <button class="linkish" data-pw="ribbon-cactus-velvet-harbor-lantern">ribbon-cactus-velvet-harbor-lantern</button></p>
+          </div>
+          <div class="panel">
+            <h2>Time to crack</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Attack scenario</th><th>Estimated time</th></tr></thead>
+                <tbody id="pw-times"></tbody>
+              </table>
+            </div>
+            <ul class="tips" id="pw-tips"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= CIPHERS ================= -->
+      <section id="panel-cipher" role="tabpanel" aria-labelledby="tab-cipher" hidden>
+        <div class="grid grid--2">
+          <div class="panel">
+            <h2>Caesar cipher</h2>
+            <label class="field">Plaintext <textarea id="caesar-in" rows="4">Frequency analysis breaks substitution ciphers because English letters appear with very predictable frequencies. E, T, A and O are everywhere.</textarea></label>
+            <label class="field">Shift <output id="shift-out">7</output><input type="range" id="shift" min="1" max="25" value="7" /></label>
+            <label class="field">Ciphertext <textarea id="caesar-out" rows="4" readonly></textarea></label>
+            <button class="btn btn--orange" id="crack-caesar">🕵️ Crack it with frequency analysis</button>
+            <div id="caesar-result" class="crack-result" hidden>
+              <p id="caesar-verdict"></p>
+              <canvas id="freq-chart" width="560" height="170" aria-label="Letter frequencies of the ciphertext vs English"></canvas>
+              <p class="muted small"><span class="swatch swatch--cipher"></span> ciphertext letters <span class="swatch swatch--english"></span> English (shifted by the cracked key)</p>
+            </div>
+          </div>
+          <div class="panel">
+            <h2>Vigenère cipher</h2>
+            <p class="muted small">"Le chiffre indéchiffrable" — unbroken for 300 years. Encrypt with a keyword, then let the index of coincidence find the key length and frequency analysis recover each letter.</p>
+            <label class="field">Plaintext <textarea id="vig-in" rows="5">Security is not a product but a process. Every system that stores data must assume that someday someone will try to break in, so good engineers design defences in depth: strong authentication, least privilege, encryption of data at rest and in transit, careful logging and monitoring, and a plan for responding when something goes wrong.</textarea></label>
+            <label class="field">Secret keyword <input type="text" id="vig-key" value="RECRUIT" /></label>
+            <label class="field">Ciphertext <textarea id="vig-out" rows="4" readonly></textarea></label>
+            <button class="btn btn--orange" id="crack-vig">🕵️ Crack without the key</button>
+            <div id="vig-result" class="crack-result" hidden>
+              <p id="vig-verdict"></p>
+              <div class="ioc" id="ioc-bars"></div>
+              <p class="muted small">Average index of coincidence per candidate key length. English ≈ 0.066, random ≈ 0.038.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= JWT ================= -->
+      <section id="panel-jwt" role="tabpanel" aria-labelledby="tab-jwt" hidden>
+        <div class="grid grid--2">
+          <div class="panel">
+            <h2>Token</h2>
+            <label class="field">Paste a JWT <textarea id="jwt-in" rows="6" spellcheck="false"></textarea></label>
+            <div class="jwt-colored" id="jwt-colored" aria-hidden="true"></div>
+            <label class="field">HS256 secret (to verify)
+              <input type="text" id="jwt-secret" value="portfolio-demo-secret" />
+            </label>
+            <div class="btn-row">
+              <button class="btn btn--primary" id="jwt-verify">Verify signature</button>
+              <button class="btn btn--small" id="jwt-sample">New sample token</button>
+              <button class="btn btn--small btn--orange" id="jwt-forge">Forge role=admin</button>
+            </div>
+            <p id="jwt-verdict" class="verdict"></p>
+          </div>
+          <div class="panel">
+            <h2>Decoded</h2>
+            <h3 class="part part--header">Header</h3>
+            <pre class="output" id="jwt-header"></pre>
+            <h3 class="part part--payload">Payload</h3>
+            <pre class="output" id="jwt-payload"></pre>
+            <h3>Security audit</h3>
+            <ul class="findings" id="jwt-findings"></ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      Built by <a href="https://masons-resume-website.netlify.app/">Mason Clarke</a> · Web Crypto API, no libraries, no network ·
+      <a href="https://github.com/Masons-coding/security-lab">View source</a>
+    </footer>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

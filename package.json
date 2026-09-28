@@ -1,0 +1,13 @@
+{
+  "name": "security-lab",
+  "version": "1.0.0",
+  "description": "Hands-on cryptography and security toolkit: hashing and the avalanche effect, AES-GCM encryption, password strength, classical cryptanalysis and JWT inspection — all client-side with Web Crypto.",
+  "type": "module",
+  "private": true,
+  "author": "Mason Clarke",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test",
+    "start": "npx --yes serve ."
+  }
+}
